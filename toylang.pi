@@ -9,7 +9,7 @@ main([Fname|_]) =>
   print_output(Output).
 
 print_output([(I,V)|Os]) =>
-  println((to_string(I) ++ " = " ++ to_string(V))),
+  println(to_string(I) ++ " = " ++ to_string(V)),
   print_output(Os).
 print_output([]) => true.
 
