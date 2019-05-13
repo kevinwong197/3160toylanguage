@@ -132,7 +132,7 @@ tokenize([C|T]) = R, is_digit(C) =>
   Token = to_number(Take),
   R = [$literal(Token)|tokenize(Left)].
 tokenize([]) = [].
-tokenize([C|_]) = nil => throw [tokenizer_error,unexpected_symbol,C].
+tokenize([C|_]) = nil => throw [tokenizer_error,unexpected_character,C].
 
 % Identifier:
 % Letter [Letter | Digit]*
