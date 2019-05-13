@@ -124,48 +124,52 @@ tokenize([')'|T]) = [paren_close|tokenize(T)].
 tokenize([C|T]) = R, is_white_space(C) =>
   R = tokenize(T).
 tokenize([C|T]) = R, is_letter(C) =>
-  Token = to_atom(tokenize_identifier([C|T],L)),
-  R = [$identifier(Token)|tokenize(L)].
+  take_identifier([C|T],0,Take,Left),
+  Token = to_atom(Take),
+  R = [$identifier(Token)|tokenize(Left)].
 tokenize([C|T]) = R, is_digit(C) =>
-  Token = to_number(tokenize_literal([C|T],L)),
-  R = [$literal(Token)|tokenize(L)].
+  take_literal([C|T],0,Take,Left),
+  Token = to_number(Take),
+  R = [$literal(Token)|tokenize(Left)].
 tokenize([]) = [].
 tokenize([C|_]) = nil => throw [tokenizer_error,unexpected_symbol,C].
 
 % Identifier:
 % Letter [Letter | Digit]*
-tokenize_identifier([C1|T],L) = R, is_letter(C1) =>
-  R = [C1|tokenize_identifier_aux(T,L)].
-tokenize_identifier_aux([C1|T],L) = R, is_letter_or_digit(C1) =>
-  R = [C1|tokenize_identifier_aux(T,L)].
-tokenize_identifier_aux([C1|T],L) = R, not is_letter_or_digit(C1) =>
-  R = [],
-  L = [C1|T].
-tokenize_identifier_aux([],L) = R =>
-  R = [],
-  L = [].
+take_identifier([],1,T,L) => T = [], L = [].
+take_identifier([C|Str],State,T,L) ?=>
+  (is_letter(C), Sym = sym_letter;
+  is_digit(C), Sym = sym_digit),
+  take_identifier_move(State,Sym,NextState),
+  T = [C|T2],
+  take_identifier(Str,NextState,T2,L).
+take_identifier([C|Str],State,T,L) => T = [], L = [C|Str].
+index (+,+,-)
+take_identifier_move(0,sym_letter,1).
+take_identifier_move(1,sym_letter,1).
+take_identifier_move(1,sym_digit,1).
 
 % Literal:
 % 0 | NonZeroDigit Digit*
-tokenize_literal(['0'|T],L) = R =>
-  R = ['0'],
-  L = T.
-tokenize_literal([C1|T],L) = R, is_none_zero_digit(C1) =>
-  R = [C1|tokenize_literal_aux(T,L)].
-tokenize_literal_aux([C1|T],L) = R, is_digit(C1) =>
-  R = [C1|tokenize_literal_aux(T,L)].
-tokenize_literal_aux([C1|T],L) = R, not is_digit(C1) =>
-  R = [],
-  L = [C1|T].
-tokenize_literal_aux([],L) = R =>
-  R = [],
-  L = [].
+take_literal([],2,T,L) => T = [], L = [].
+take_literal([],1,T,L) => T = [], L = [].
+take_literal([C|Str],State,T,L) ?=>
+  (is_none_zero_digit(C), Sym = digit_nzero;
+  C == '0', Sym = digit_zero),
+  take_literal_move(State,Sym,NextState),
+  T = [C|T2],
+  take_literal(Str,NextState,T2,L).
+take_literal([C|Str],State,T,L) => T = [], L = [C|Str].
+index (+,+,-)
+take_literal_move(0,digit_zero,1).
+take_literal_move(0,digit_nzero,2).
+take_literal_move(2,digit_zero,2).
+take_literal_move(2,digit_nzero,2).
 
 is_none_zero_digit(C) => contains("123456789", C).
 is_digit(C) => contains("0123456789", C).
 is_letter(C) => contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_", C).
 
-is_letter_or_digit(C) => is_digit(C); is_letter(C).
 is_white_space(C) => contains(" \b\v\t\r\v\n", C).
 
 contains([H|T],H) => true.
