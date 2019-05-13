@@ -59,13 +59,13 @@ assignments(Si,So,Tree) =>
   Tree = [A|As].
 
 % Assignment:
-% 	Identifier = Exp;
+% Identifier = Exp;
 assignment([identifier(Token),equals|S1],So,Tree) =>
   exp(S1,[semicolon|So],Tree1),
   Tree = $assign($identifier(Token),Tree1).
 
 % Exp: 
-% 	Exp + Term | Exp - Term | Term
+% Exp + Term | Exp - Term | Term
 table
 exp(Si,So,Tree) ?=>
   exp(Si,[add|S1],Tree1),
@@ -79,7 +79,7 @@ exp(Si,So,Tree) =>
   term(Si,So,Tree).
 
 % Term:
-% 	Term * Fact  | Fact
+% Term * Fact  | Fact
 table
 term(Si,So,Tree) ?=>
   term(Si,[mul|S1],Tree1),
