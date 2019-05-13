@@ -53,15 +53,21 @@ assignments([],So,Tree) =>
   So = [],
   Tree = [].
 assignments(Si,So,Tree) =>
-  (assignment(Si,S1,A);
-    throw [syntax_error]),
+  assignment(Si,S1,A),
   assignments(S1,So,As),
   Tree = [A|As].
 
 % Assignment:
 % Identifier = Exp;
-assignment([identifier(Token),equals|S1],So,Tree) =>
-  exp(S1,[semicolon|So],Tree1),
+assignment(L,So,Tree) =>
+  (L = [$identifier(Token)|Si];
+    throw [syntax_error,expecting_identifier_on_start_of_assignment,['<HERE>'|L]]),
+  (Si = [equals|S1];
+    throw [syntax_error,expecting_equals_after_identifier,['<HERE>'|Si]]),
+  (exp(S1,S2,Tree1);
+    throw [syntax_error,expecting_expression_after_equals,['<HERE>'|S1]]),
+  (S2 = [semicolon|So];
+    throw [syntax_error,expecting_semicolon_after_expression,['<HERE>'|S2]]),
   Tree = $assign($identifier(Token),Tree1).
 
 % Exp: 
