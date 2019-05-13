@@ -1,0 +1,167 @@
+import util.
+
+main =>
+  print("usage: picat toylang.pi SOURCEFILE").
+
+main([Fname|_]) =>
+  Source = read_file_chars(Fname),
+  Output = execute(parse(tokenize(Source))),
+  print_output(Output).
+
+print_output([(I,V)|Os]) =>
+  println((to_string(I) ++ " = " ++ to_string(V))),
+  print_output(Os).
+print_output([]) => true.
+
+%
+% intepreter
+%
+execute(As) = R =>
+  execute(As,[],R).
+execute([$assign(identifier(I),E)|As],Si,So) =>
+  execute(As,set_var(Si,I,evaluate(E,Si)),So).
+execute([],Si,So) => So = Si.
+
+set_var([(I,_)|S],I,V) = [(I,V)|S].
+set_var([(I,V)|S],I1,V1) = [(I,V)|set_var(S,I1,V1)].
+set_var([],I1,V1) = [(I1,V1)].
+
+get_var([(I,V)|_],I) = V.
+get_var([(_,_)|S],I) = get_var(S,I).
+get_var([],I) = nil => throw [runtime_error,uninitialized_variable,I].
+
+evaluate(literal(Token),S) = Token.
+evaluate(identifier(Token),S) = get_var(S,Token).
+
+evaluate(mul(A,B),S) = evaluate(A,S) * evaluate(B,S).
+evaluate(add(A,B),S) = evaluate(A,S) + evaluate(B,S).
+evaluate(sub(A,B),S) = evaluate(A,S) - evaluate(B,S).
+evaluate(uminus(E),S) = - evaluate(E,S).
+evaluate(uplus(E),S) = + evaluate(E,S).
+
+%
+% parser
+%
+parse(Tokens) = R =>
+  program(Tokens,[],R).
+
+% Program:
+% Assignment*
+program(Si,So,Tree) =>
+  assignments(Si,So,Tree).
+assignments([],So,Tree) =>
+  So = [],
+  Tree = [].
+assignments(Si,So,Tree) =>
+  (assignment(Si,S1,A);
+    throw [syntax_error]),
+  assignments(S1,So,As),
+  Tree = [A|As].
+
+% Assignment:
+% 	Identifier = Exp;
+assignment([identifier(Token),equals|S1],So,Tree) =>
+  exp(S1,[semicolon|So],Tree1),
+  Tree = $assign($identifier(Token),Tree1).
+
+% Exp: 
+% 	Exp + Term | Exp - Term | Term
+table
+exp(Si,So,Tree) ?=>
+  exp(Si,[add|S1],Tree1),
+  term(S1,So,Tree2),
+  Tree = $add(Tree1,Tree2).
+exp(Si,So,Tree) ?=>
+  exp(Si,[sub|S1],Tree1),
+  term(S1,So,Tree2),
+  Tree = $sub(Tree1,Tree2).
+exp(Si,So,Tree) =>
+  term(Si,So,Tree).
+
+% Term:
+% 	Term * Fact  | Fact
+table
+term(Si,So,Tree) ?=>
+  term(Si,[mul|S1],Tree1),
+  fact(S1,So,Tree2),
+  Tree = $mul(Tree1,Tree2).
+term(Si,So,Tree) ?=>
+  fact(Si,So,Tree).
+
+% Fact:
+% ( Exp ) | - Fact | + Fact | Literal | Identifier
+fact([paren_open|Si],So,Tree) =>
+  exp(Si,[paren_close|So],Tree).
+fact([sub|Si],So,Tree) =>
+  fact(Si,So,Fact),
+  Tree = $uminus(Fact).
+fact([add|Si],So,Tree) =>
+  fact(Si,So,Fact),
+  Tree = $uplus(Fact).
+fact([literal(Token)|Si],So,Tree) =>
+  Tree = $literal(Token),
+  So = Si.
+fact([identifier(Token)|Si],So,Tree) =>
+  Tree = $identifier(Token),
+  So = Si.
+
+%
+% tokenizer
+%
+tokenize(['+'|T]) = [add|tokenize(T)].
+tokenize(['-'|T]) = [sub|tokenize(T)].
+tokenize(['*'|T]) = [mul|tokenize(T)].
+tokenize([';'|T]) = [semicolon|tokenize(T)].
+tokenize(['='|T]) = [equals|tokenize(T)].
+tokenize(['('|T]) = [paren_open|tokenize(T)].
+tokenize([')'|T]) = [paren_close|tokenize(T)].
+tokenize([C|T]) = R, is_white_space(C) =>
+  R = tokenize(T).
+tokenize([C|T]) = R, is_letter(C) =>
+  Token = to_atom(tokenize_identifier([C|T],L)),
+  R = [$identifier(Token)|tokenize(L)].
+tokenize([C|T]) = R, is_digit(C) =>
+  Token = to_number(tokenize_literal([C|T],L)),
+  R = [$literal(Token)|tokenize(L)].
+tokenize([]) = [].
+tokenize([C|_]) = nil => throw [tokenizer_error,unexpected_symbol,C].
+
+% Identifier:
+% Letter [Letter | Digit]*
+tokenize_identifier([C1|T],L) = R, is_letter(C1) =>
+  R = [C1|tokenize_identifier_aux(T,L)].
+tokenize_identifier_aux([C1|T],L) = R, is_letter_or_digit(C1) =>
+  R = [C1|tokenize_identifier_aux(T,L)].
+tokenize_identifier_aux([C1|T],L) = R, not is_letter_or_digit(C1) =>
+  R = [],
+  L = [C1|T].
+tokenize_identifier_aux([],L) = R =>
+  R = [],
+  L = [].
+
+% Literal:
+% 0 | NonZeroDigit Digit*
+tokenize_literal(['0'|T],L) = R =>
+  R = ['0'],
+  L = T.
+tokenize_literal([C1|T],L) = R, is_none_zero_digit(C1) =>
+  R = [C1|tokenize_literal_aux(T,L)].
+tokenize_literal_aux([C1|T],L) = R, is_digit(C1) =>
+  R = [C1|tokenize_literal_aux(T,L)].
+tokenize_literal_aux([C1|T],L) = R, not is_digit(C1) =>
+  R = [],
+  L = [C1|T].
+tokenize_literal_aux([],L) = R =>
+  R = [],
+  L = [].
+
+is_none_zero_digit(C) => contains("123456789", C).
+is_digit(C) => contains("0123456789", C).
+is_letter(C) => contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_", C).
+
+is_letter_or_digit(C) => is_digit(C); is_letter(C).
+is_white_space(C) => contains(" \b\v\t\r\v\n", C).
+
+contains([H|T],H) => true.
+contains([H|T],C) => contains(T,C).
+contains([],C) => false.
