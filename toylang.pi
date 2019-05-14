@@ -76,11 +76,11 @@ expect(Info,S) =>
 assignment(L,So,Tree) =>
   expect(identifier,L),
   L = [$identifier(Token)|Si],
-  expect(equals,L),
+  expect(equals,Si),
   Si = [equals|S1],
-  expect(expression,L),
+  expect(expression,S1),
   exp(S1,S2,Tree1),
-  expect(semicolon,L),
+  expect(semicolon,S2),
   S2 = [semicolon|So],
   Tree = $assign($identifier(Token),Tree1).
 
@@ -126,16 +126,16 @@ term_prime(Si,So,Tree) => So = Si, Tree = nil.
 % Fact:
 % ( Exp ) | - Fact | + Fact | Literal | Identifier
 fact([paren_open|Si],So,Tree) =>
-  expect(expression,S1),
+  expect(expression,Si),
   exp(Si,S1,Tree),
   expect("closing parenthesis",S1),
   S1 = [paren_close|So].
 fact([sub|Si],So,Tree) =>
-  expect("factor",S1),
+  expect("factor",Si),
   fact(Si,So,Fact),
   Tree = $uminus(Fact).
 fact([add|Si],So,Tree) =>
-  expect("factor",S1),
+  expect("factor",Si),
   fact(Si,So,Fact),
   Tree = $uplus(Fact).
 fact([literal(Token)|Si],So,Tree) =>
