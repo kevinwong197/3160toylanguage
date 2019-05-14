@@ -114,6 +114,7 @@ fact([identifier(Token)|Si],So,Tree) =>
 %
 % tokenizer
 %
+tokenize([]) = [].
 tokenize(['+'|T]) = [add|tokenize(T)].
 tokenize(['-'|T]) = [sub|tokenize(T)].
 tokenize(['*'|T]) = [mul|tokenize(T)].
@@ -123,15 +124,12 @@ tokenize(['('|T]) = [paren_open|tokenize(T)].
 tokenize([')'|T]) = [paren_close|tokenize(T)].
 tokenize([C|T]) = R, is_white_space(C) =>
   R = tokenize(T).
-tokenize([C|T]) = R, is_letter(C) =>
-  take_identifier([C|T],0,Take,Left),
+tokenize(L) = R, take_identifier(L,0,Take,Left), len(Take) > 0 =>
   Token = to_atom(Take),
   R = [$identifier(Token)|tokenize(Left)].
-tokenize([C|T]) = R, is_digit(C) =>
-  take_literal([C|T],0,Take,Left),
+tokenize(L) = R, take_literal(L,0,Take,Left), len(Take) > 0 =>
   Token = to_number(Take),
   R = [$literal(Token)|tokenize(Left)].
-tokenize([]) = [].
 tokenize([C|_]) = nil => throw [tokenizer_error,unexpected_character,C].
 
 % Identifier:
@@ -139,7 +137,7 @@ tokenize([C|_]) = nil => throw [tokenizer_error,unexpected_character,C].
 take_identifier([],1,T,L) => T = [], L = [].
 take_identifier([C|Str],State,T,L) ?=>
   (is_letter(C), Sym = sym_letter;
-  is_digit(C), Sym = sym_digit),
+    is_digit(C), Sym = sym_digit),
   take_identifier_move(State,Sym,NextState),
   T = [C|T2],
   take_identifier(Str,NextState,T2,L).
@@ -155,7 +153,7 @@ take_literal([],2,T,L) => T = [], L = [].
 take_literal([],1,T,L) => T = [], L = [].
 take_literal([C|Str],State,T,L) ?=>
   (is_none_zero_digit(C), Sym = digit_nzero;
-  C == '0', Sym = digit_zero),
+    C == '0', Sym = digit_zero),
   take_literal_move(State,Sym,NextState),
   T = [C|T2],
   take_literal(Str,NextState,T2,L).
@@ -166,11 +164,11 @@ take_literal_move(0,digit_nzero,2).
 take_literal_move(2,digit_zero,2).
 take_literal_move(2,digit_nzero,2).
 
-is_none_zero_digit(C) => contains("123456789", C).
-is_digit(C) => contains("0123456789", C).
-is_letter(C) => contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_", C).
+is_none_zero_digit(C) => contains("123456789",C).
+is_digit(C) => contains("0123456789",C).
+is_letter(C) => contains("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",C).
 
-is_white_space(C) => contains(" \b\v\t\r\v\n", C).
+is_white_space(C) => contains(" \b\v\t\r\v\n",C).
 
 contains([H|T],H) => true.
 contains([H|T],C) => contains(T,C).
