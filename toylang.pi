@@ -89,7 +89,6 @@ assignment(L,So,Tree) =>
 %
 % E -> T E'
 exp(Si,So,Tree) =>
-  expect(term,Si),
   term(Si,S1,Tree1),
   exp_prime(S1,So,Tree2),
   Tree = $exp(Tree1,Tree2).
@@ -111,7 +110,6 @@ exp_prime(Si,So,Tree) => So = Si, Tree = nil.
 %
 % T -> F T'
 term(Si,So,Tree) =>
-  expect(factor,Si),
   fact(Si,S1,Tree1),
   term_prime(S1,So,Tree2),
   Tree = $term(Tree1,Tree2).
