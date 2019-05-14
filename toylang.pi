@@ -129,11 +129,11 @@ fact([paren_open|Si],So,Tree) =>
   expect("closing parenthesis",S1),
   S1 = [paren_close|So].
 fact([sub|Si],So,Tree) =>
-  expect("factor",Si),
+  expect(factor,Si),
   fact(Si,So,Fact),
   Tree = $uminus(Fact).
 fact([add|Si],So,Tree) =>
-  expect("factor",Si),
+  expect(factor,Si),
   fact(Si,So,Fact),
   Tree = $uplus(Fact).
 fact([literal(Token)|Si],So,Tree) =>
