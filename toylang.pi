@@ -28,14 +28,23 @@ set_var([],I1,V1) = [(I1,V1)].
 
 get_var([(I,V)|_],I) = V.
 get_var([(_,_)|S],I) = get_var(S,I).
-get_var([],I) = nil => throw [runtime_error,uninitialized_variable,I].
+get_var([],I) = nil => throw($runtime_error(uninitialized_variable(I))).
 
 evaluate(literal(Token),S) = Token.
 evaluate(identifier(Token),S) = get_var(S,Token).
 
-evaluate(mul(A,B),S) = evaluate(A,S) * evaluate(B,S).
-evaluate(add(A,B),S) = evaluate(A,S) + evaluate(B,S).
-evaluate(sub(A,B),S) = evaluate(A,S) - evaluate(B,S).
+evaluate(exp(A,nil),S) = evaluate(A,S).
+evaluate(exp(A,B),S) = evaluate(A,S) + evaluate(B,S).
+evaluate(exp_prime(add,A,nil),S) = + evaluate(A,S).
+evaluate(exp_prime(sub,A,nil),S) = - evaluate(A,S).
+evaluate(exp_prime(add,A,B),S) = + evaluate(A,S) + evaluate(B,S).
+evaluate(exp_prime(sub,A,B),S) = - evaluate(A,S) + evaluate(B,S).
+
+evaluate(term(A,nil),S) = evaluate(A,S).
+evaluate(term(A,B),S) = evaluate(A,S) * evaluate(B,S).
+evaluate(term_prime(mul,A,nil),S) = evaluate(A,S).
+evaluate(term_prime(mul,A,B),S) = evaluate(A,S) * evaluate(B,S).
+
 evaluate(uminus(E),S) = - evaluate(E,S).
 evaluate(uplus(E),S) = + evaluate(E,S).
 
@@ -60,39 +69,49 @@ assignments(Si,So,Tree) =>
 % Assignment:
 % Identifier = Exp;
 assignment(L,So,Tree) =>
-  (L = [$identifier(Token)|Si];
-    throw [syntax_error,expecting_identifier_on_start_of_assignment,['<HERE>'|L]]),
-  (Si = [equals|S1];
-    throw [syntax_error,expecting_equals_after_identifier,['<HERE>'|Si]]),
-  (exp(S1,S2,Tree1);
-    throw [syntax_error,expecting_expression_after_equals,['<HERE>'|S1]]),
-  (S2 = [semicolon|So];
-    throw [syntax_error,expecting_semicolon_after_expression,['<HERE>'|S2]]),
+  L = [$identifier(Token)|Si],
+    % throw($syntax_error(expecting_identifier_on_start_of_assignment(['<HERE>'|L])))),
+  Si = [equals|S1],
+    % throw($syntax_error(expecting_equals_after_identifier(['<HERE>'|Si])))),
+  exp(S1,S2,Tree1),
+    % throw($syntax_error(expecting_expression_after_equals(['<HERE>'|S1])))),
+  S2 = [semicolon|So],
+    % throw($syntax_error(expecting_semicolon_after_expression(['<HERE>'|S2])))),
   Tree = $assign($identifier(Token),Tree1).
 
 % Exp: 
 % Exp + Term | Exp - Term | Term
-table
-exp(Si,So,Tree) ?=>
-  exp(Si,[add|S1],Tree1),
-  term(S1,So,Tree2),
-  Tree = $add(Tree1,Tree2).
-exp(Si,So,Tree) ?=>
-  exp(Si,[sub|S1],Tree1),
-  term(S1,So,Tree2),
-  Tree = $sub(Tree1,Tree2).
+%
+% E -> T E'
 exp(Si,So,Tree) =>
-  term(Si,So,Tree).
+  term(Si,S1,Tree1),
+  exp_prime(S1,So,Tree2),
+  Tree = $exp(Tree1,Tree2).
+% E' -> + T E' | - T E' | e
+exp_prime([add|Si],So,Tree) =>
+  term(Si,S1,Tree1),
+  exp_prime(S1,So,Tree2),
+  Tree = $exp_prime(add,Tree1,Tree2).
+exp_prime([sub|Si],So,Tree) =>
+  term(Si,S1,Tree1),
+  exp_prime(S1,So,Tree2),
+  Tree = $exp_prime(sub,Tree1,Tree2).
+exp_prime(Si,So,Tree) => So = Si, Tree = nil.
 
 % Term:
 % Term * Fact  | Fact
-table
-term(Si,So,Tree) ?=>
-  term(Si,[mul|S1],Tree1),
-  fact(S1,So,Tree2),
-  Tree = $mul(Tree1,Tree2).
-term(Si,So,Tree) ?=>
-  fact(Si,So,Tree).
+%
+% T -> F T'
+term(Si,So,Tree) =>
+  fact(Si,S1,Tree1),
+  term_prime(S1,So,Tree2),
+  Tree = $term(Tree1,Tree2).
+% T' -> * F T' | e
+term_prime([mul|Si],So,Tree) =>
+  fact(Si,S1,Tree1),
+  term_prime(S1,So,Tree2),
+  Tree = $term_prime(mul,Tree1,Tree2).
+term_prime(Si,So,Tree) => So = Si, Tree = nil.
 
 % Fact:
 % ( Exp ) | - Fact | + Fact | Literal | Identifier
@@ -130,7 +149,7 @@ tokenize(L) = R, take_identifier(L,0,Take,Left), len(Take) > 0 =>
 tokenize(L) = R, take_literal(L,0,Take,Left), len(Take) > 0 =>
   Token = to_number(Take),
   R = [$literal(Token)|tokenize(Left)].
-tokenize([C|_]) = nil => throw [tokenizer_error,unexpected_character,C].
+tokenize([C|_]) = nil => throw($tokenizer_error(unexpected_character(C))).
 
 % Identifier:
 % Letter [Letter | Digit]*
