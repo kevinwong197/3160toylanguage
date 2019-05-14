@@ -66,17 +66,22 @@ assignments(Si,So,Tree) =>
   assignments(S1,So,As),
   Tree = [A|As].
 
+expect(Info,S) ?=> true.
+expect(Info,S) =>
+  Err = to_atom("expecting " ++ to_string(Info)),
+  throw($syntax_error(Err,(['<HERE>'|S]))).
+
 % Assignment:
 % Identifier = Exp;
 assignment(L,So,Tree) =>
+  expect(identifier,L),
   L = [$identifier(Token)|Si],
-    % throw($syntax_error(expecting_identifier_on_start_of_assignment(['<HERE>'|L])))),
+  expect(equals,L),
   Si = [equals|S1],
-    % throw($syntax_error(expecting_equals_after_identifier(['<HERE>'|Si])))),
+  expect(expression,L),
   exp(S1,S2,Tree1),
-    % throw($syntax_error(expecting_expression_after_equals(['<HERE>'|S1])))),
+  expect(semicolon,L),
   S2 = [semicolon|So],
-    % throw($syntax_error(expecting_semicolon_after_expression(['<HERE>'|S2])))),
   Tree = $assign($identifier(Token),Tree1).
 
 % Exp: 
@@ -84,15 +89,18 @@ assignment(L,So,Tree) =>
 %
 % E -> T E'
 exp(Si,So,Tree) =>
+  expect(term,Si),
   term(Si,S1,Tree1),
   exp_prime(S1,So,Tree2),
   Tree = $exp(Tree1,Tree2).
 % E' -> + T E' | - T E' | e
 exp_prime([add|Si],So,Tree) =>
+  expect(term,Si),
   term(Si,S1,Tree1),
   exp_prime(S1,So,Tree2),
   Tree = $exp_prime(add,Tree1,Tree2).
 exp_prime([sub|Si],So,Tree) =>
+  expect(term,Si),
   term(Si,S1,Tree1),
   exp_prime(S1,So,Tree2),
   Tree = $exp_prime(sub,Tree1,Tree2).
@@ -103,11 +111,13 @@ exp_prime(Si,So,Tree) => So = Si, Tree = nil.
 %
 % T -> F T'
 term(Si,So,Tree) =>
+  expect(factor,Si),
   fact(Si,S1,Tree1),
   term_prime(S1,So,Tree2),
   Tree = $term(Tree1,Tree2).
 % T' -> * F T' | e
 term_prime([mul|Si],So,Tree) =>
+  expect(factor,Si),
   fact(Si,S1,Tree1),
   term_prime(S1,So,Tree2),
   Tree = $term_prime(mul,Tree1,Tree2).
@@ -116,11 +126,16 @@ term_prime(Si,So,Tree) => So = Si, Tree = nil.
 % Fact:
 % ( Exp ) | - Fact | + Fact | Literal | Identifier
 fact([paren_open|Si],So,Tree) =>
-  exp(Si,[paren_close|So],Tree).
+  expect(expression,S1),
+  exp(Si,S1,Tree),
+  expect("closing parenthesis",S1),
+  S1 = [paren_close|So].
 fact([sub|Si],So,Tree) =>
+  expect("factor",S1),
   fact(Si,So,Fact),
   Tree = $uminus(Fact).
 fact([add|Si],So,Tree) =>
+  expect("factor",S1),
   fact(Si,So,Fact),
   Tree = $uplus(Fact).
 fact([literal(Token)|Si],So,Tree) =>
