@@ -169,12 +169,10 @@ tokenize([C|_]) = nil => throw($tokenizer_error(unexpected_character(C))).
 % Identifier:
 % Letter [Letter | Digit]*
 take_identifier([],1,T,L) => T = [], L = [].
-take_identifier([C|Str],State,T,L), is_letter(C) =>
-  take_identifier_move(State,sym_letter,NextState),
-  T = [C|T2],
-  take_identifier(Str,NextState,T2,L).
-take_identifier([C|Str],State,T,L), is_digit(C) =>
-  take_identifier_move(State,sym_digit,NextState),
+take_identifier([C|Str],State,T,L) ?=>
+  (is_letter(C), Sym = sym_letter;
+    is_digit(C), Sym = sym_digit),
+  take_identifier_move(State,Sym,NextState),
   T = [C|T2],
   take_identifier(Str,NextState,T2,L).
 take_identifier([C|Str],State,T,L) => T = [], L = [C|Str].
@@ -183,16 +181,13 @@ take_identifier_move(0,sym_letter,1).
 take_identifier_move(1,sym_letter,1).
 take_identifier_move(1,sym_digit,1).
 
-% Literal:
 % 0 | NonZeroDigit Digit*
 take_literal([],2,T,L) => T = [], L = [].
 take_literal([],1,T,L) => T = [], L = [].
-take_literal([C|Str],State,T,L), is_none_zero_digit(C) =>
-  take_literal_move(State,digit_nzero,NextState),
-  T = [C|T2],
-  take_literal(Str,NextState,T2,L).
-take_literal([C|Str],State,T,L), C == '0' =>
-  take_literal_move(State,digit_zero,NextState),
+take_literal([C|Str],State,T,L) ?=>
+  (is_none_zero_digit(C), Sym = digit_nzero;
+    C == '0', Sym = digit_zero),
+  take_literal_move(State,Sym,NextState),
   T = [C|T2],
   take_literal(Str,NextState,T2,L).
 take_literal([C|Str],State,T,L) => T = [], L = [C|Str].
